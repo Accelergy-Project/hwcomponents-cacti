@@ -1,0 +1,3 @@
+[submodule "hwcomponents_cacti/cacti"]
+	path = hwcomponents_cacti/cacti
+	url = https://github.com/HewlettPackard/cacti.git
