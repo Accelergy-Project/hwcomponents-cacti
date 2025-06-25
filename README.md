@@ -24,13 +24,13 @@ If you use this library in your work, please cite the following:
 
 ```bibtex
 @misc{andrulis2024modelinganalogdigitalconverterenergyarea,
-      title={Modeling Analog-Digital-Converter Energy and Area for Compute-In-Memory Accelerator Design}, 
-      author={Tanner Andrulis and Ruicong Chen and Hae-Seung Lee and Joel S. Emer and Vivienne Sze},
-      year={2024},
-      eprint={2404.06553},
-      archivePrefix={arXiv},
-      primaryClass={cs.AR},
-      url={https://arxiv.org/abs/2404.06553}, 
+  title={Modeling Analog-Digital-Converter Energy and Area for Compute-In-Memory Accelerator Design}, 
+  author={Tanner Andrulis and Ruicong Chen and Hae-Seung Lee and Joel S. Emer and Vivienne Sze},
+  year={2024},
+  eprint={2404.06553},
+  archivePrefix={arXiv},
+  primaryClass={cs.AR},
+  url={https://arxiv.org/abs/2404.06553}, 
 }
 @inproceedings{accelergy,
   author      = {Wu, Yannan Nellie and Emer, Joel S and Sze, Vivienne},
@@ -56,21 +56,21 @@ If you use this library in your work, please cite the following:
   doi={10.1109/4.509850}
 }
 @article{balasubramonian2017cacti,
-author = {Balasubramonian, Rajeev and Kahng, Andrew B. and Muralimanohar, Naveen and Shafiee, Ali and Srinivas, Vaishnav},
-title = {CACTI 7: New Tools for Interconnect Exploration in Innovative Off-Chip Memories},
-year = {2017},
-issue_date = {June 2017},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-volume = {14},
-number = {2},
-issn = {1544-3566},
-url = {https://doi.org/10.1145/3085572},
-doi = {10.1145/3085572},
-journal = {ACM Trans. Archit. Code Optim.},
-month = jun,
-articleno = {14},
-numpages = {25},
-keywords = {DRAM, Memory, NVM, interconnects, tools}
+  author = {Balasubramonian, Rajeev and Kahng, Andrew B. and Muralimanohar, Naveen and Shafiee, Ali and Srinivas, Vaishnav},
+  title = {CACTI 7: New Tools for Interconnect Exploration in Innovative Off-Chip Memories},
+  year = {2017},
+  issue_date = {June 2017},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  volume = {14},
+  number = {2},
+  issn = {1544-3566},
+  url = {https://doi.org/10.1145/3085572},
+  doi = {10.1145/3085572},
+  journal = {ACM Trans. Archit. Code Optim.},
+  month = jun,
+  articleno = {14},
+  numpages = {25},
+  keywords = {DRAM, Memory, NVM, interconnects, tools}
 }
 ```
