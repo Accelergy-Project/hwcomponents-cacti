@@ -8,7 +8,7 @@ import os
 import subprocess
 import tempfile
 from typing import Callable, Optional, Union
-from hwcomponents import EnergyAreaEstimator, actionDynamicEnergy
+from hwcomponents import EnergyAreaModel, actionDynamicEnergy
 import csv
 
 
@@ -37,7 +37,7 @@ def get_cacti_dir(logger: Logger) -> str:
     raise FileNotFoundError("CACTI executable not found")
 
 
-class DRAM(EnergyAreaEstimator):
+class DRAM(EnergyAreaModel):
     component_name = ["DRAM", "dram"]
     percent_accuracy_0_to_100 = 80
     type2energy = {
@@ -116,7 +116,7 @@ def interp_call(
     )
 
 
-class Memory(EnergyAreaEstimator):
+class Memory(EnergyAreaModel):
     def __init__(
         self,
         cache_type: str,

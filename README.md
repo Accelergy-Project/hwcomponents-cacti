@@ -1,7 +1,7 @@
 # HWComponents-Cacti
 
-This estimator connects CACTI to the HWComponents. It provides estimators for SRAM,
-DRAM, and caches. This is adapted from the Accelergy CACTI plug-in.
+This model connects CACTI to the HWComponents. It provides models for SRAM, DRAM, and
+caches. This is adapted from the Accelergy CACTI plug-in.
 
 ## Installation
 Clone the repository and install with pip:
