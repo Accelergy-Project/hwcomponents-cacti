@@ -57,16 +57,12 @@ class DRAM(EnergyAreaModel):
         self.type = type
         self.width = assert_int(width, "width")
 
-    @actionDynamicEnergy
+    @actionDynamicEnergy(bits_per_action="width")
     def read(self) -> float:
         return self.type2energy[self.type] * 1e-12 * self.width
 
-    @actionDynamicEnergy
+    @actionDynamicEnergy(bits_per_action="width")
     def write(self) -> float:
-        return self.read()
-
-    @actionDynamicEnergy
-    def update(self) -> float:
         return self.read()
 
 
@@ -369,20 +365,15 @@ class SRAM(Memory):
             n_banks=n_banks,
         )
 
-    @actionDynamicEnergy
+    @actionDynamicEnergy(bits_per_action="width")
     def read(self) -> float:
         self._interpolate_and_call_cacti()
         return self.read_energy
 
-    @actionDynamicEnergy
+    @actionDynamicEnergy(bits_per_action="width")
     def write(self) -> float:
         self._interpolate_and_call_cacti()
         return self.write_energy
-
-    @actionDynamicEnergy
-    def update(self) -> float:
-        self._interpolate_and_call_cacti()
-        return self.update_energy
 
     def do_nothing(self):
         pass
@@ -413,30 +404,25 @@ class Cache(Memory):
             tag_size=tag_size,
         )
 
-    @actionDynamicEnergy
+    @actionDynamicEnergy(bits_per_action="width")
     def read(self) -> float:
         self._interpolate_and_call_cacti()
         return self.read_energy
 
-    @actionDynamicEnergy
+    @actionDynamicEnergy(bits_per_action="width")
     def write(self) -> float:
         self._interpolate_and_call_cacti()
         return self.write_energy
 
-    @actionDynamicEnergy
-    def update(self) -> float:
-        self._interpolate_and_call_cacti()
-        return self.update_energy
-
-    @actionDynamicEnergy
+    @actionDynamicEnergy(bits_per_action="width")
     def read_access(self) -> float:
         return self.read()
 
-    @actionDynamicEnergy
+    @actionDynamicEnergy(bits_per_action="width")
     def write_access(self) -> float:
         return self.write()
 
-    @actionDynamicEnergy
+    @actionDynamicEnergy(bits_per_action="width")
     def update_access(self) -> float:
         return self.update()
 
