@@ -10,23 +10,20 @@ import tempfile
 from typing import Callable, Optional, Union
 from hwcomponents import EnergyAreaModel, actionDynamicEnergy
 import csv
+import hashlib
 
 
-def get_temp_file(write_str: str = "") -> str:
+def clean_tmp_dir():
     temp_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "cacti_inputs_outputs"
     )
     os.makedirs(temp_dir, exist_ok=True)
-    # If there's more than 50 files in the directory, remove the oldest ones
+    # If there's more than 200 files in the directory, remove the oldest ones
     files = sorted(glob.glob(temp_dir), key=os.path.getctime, reverse=True)
-    if len(files) > 50:
-        for file in files[50:]:
+    if len(files) > 200:
+        for file in files[200:]:
             os.remove(file)
-
-    t = tempfile.NamedTemporaryFile(mode="w", delete=False, dir=temp_dir)
-    t.write(write_str)
-    t.close()
-    return os.path.abspath(t.name)
+    return temp_dir
 
 
 def get_cacti_dir(logger: Logger) -> str:
@@ -299,21 +296,47 @@ class Memory(EnergyAreaModel):
         cfg.append(f"-tag size (b) {tag_size}\n")
         cfg.append(f"-associativity {associativity}\n")
 
-        input_path = get_temp_file("".join(cfg))
-        output_path = get_temp_file()
+        # Generate a unique name for the input file using Python's hash function
+        temp_dir = clean_tmp_dir()
+        input_name = hashlib.sha256("".join(cfg).encode()).hexdigest()
+        input_path = os.path.join(temp_dir, input_name)
+        output_path = os.path.join(temp_dir, input_name + "cacti.log")
+        output_path_csv = os.path.join(temp_dir, input_name + ".out")
+
+        def read_csv_results(output_path_csv):
+            with open(output_path_csv, "r") as f:
+                csv_results = csv.DictReader(f.readlines())
+                row = list(csv_results)[-1]
+                return (
+                    float(row[" Dynamic read energy (nJ)"]) * 1e-9,
+                    float(row[" Dynamic write energy (nJ)"]) * 1e-9,
+                    float(row[" Dynamic write energy (nJ)"]) * 1e-9,
+                    float(row[" Standby leakage per bank(mW)"]) * 1e-3 * self.n_banks,
+                    float(row[" Area (mm2)"]) * 1e-6,
+                    float(row[" Random cycle time (ns)"]) * 1e-9,
+                )
+
+        if os.path.exists(output_path_csv):
+            try:
+                return read_csv_results(output_path_csv)
+            except Exception as e:
+                self.logger.warning(
+                    f"Error reading CACTI output file {output_path_csv}: {e}"
+                )
+                pass
+
+        with open(input_path, "w") as f:
+            f.write("".join(cfg))
 
         self.logger.info(f"Calling CACTI with input path {input_path}")
         self.logger.info(f"CACTI output will be written to {output_path}")
 
         cacti_dir = get_cacti_dir(self.logger)
-        # f"cd {os.path.dirname(_path)}",
 
         exec_list = ["./cacti", "-infile", input_path]
         self.logger.info(
             f"Calling: cd {cacti_dir} ; {' '.join(exec_list)} >> {output_path} 2>&1"
         )
-        if os.path.exists(input_path + ".out"):
-            os.remove(input_path + ".out")
         result = subprocess.call(
             exec_list,
             cwd=cacti_dir,
@@ -321,27 +344,13 @@ class Memory(EnergyAreaModel):
             stderr=subprocess.STDOUT,
         )
 
-        if result != 0 or not os.path.exists(input_path + ".out"):
+        if result != 0 or not os.path.exists(output_path_csv):
             raise Exception(
                 f"CACTI failed with exit code {result}. Please check {output_path} for CACTI output. "
                 f"Run command: cd {cacti_dir} ; {' '.join(exec_list)} >> {output_path} 2>&1"
             )
-        os.remove(input_path)
 
-        csv_results = csv.DictReader(open(input_path + ".out").readlines())
-        row = list(csv_results)[-1]
-
-        os.remove(input_path + ".out")
-        os.remove(output_path)
-
-        return (
-            float(row[" Dynamic read energy (nJ)"]) * 1e-9,
-            float(row[" Dynamic write energy (nJ)"]) * 1e-9,
-            float(row[" Dynamic write energy (nJ)"]) * 1e-9,
-            float(row[" Standby leakage per bank(mW)"]) * 1e-3 * self.n_banks,
-            float(row[" Area (mm2)"]) * 1e-6,
-            float(row[" Random cycle time (ns)"]) * 1e-9,
-        )
+        return read_csv_results(output_path_csv)
 
     @abstractmethod
     def do_nothing(self):
