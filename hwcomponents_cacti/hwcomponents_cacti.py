@@ -143,6 +143,7 @@ class Memory(EnergyAreaModel):
         self.cacti_leak_power: float = None
         self.cacti_area: float = None
         self.cycle_period: float = None
+        self._called_cacti = False
 
         self._interpolate_and_call_cacti()
         super().__init__(self.cacti_area, self.cacti_leak_power)
@@ -251,6 +252,9 @@ class Memory(EnergyAreaModel):
             )
 
     def _interpolate_and_call_cacti(self):
+        if self._called_cacti:
+            return
+        self._called_cacti = True
         if self.read_energy is not None:
             self.log_bandwidth()
             return
@@ -331,12 +335,12 @@ class Memory(EnergyAreaModel):
         os.remove(output_path)
 
         return (
-            float(row[" Dynamic read energy (nJ)"]) * 1e9,
-            float(row[" Dynamic write energy (nJ)"]) * 1e9,
-            float(row[" Dynamic write energy (nJ)"]) * 1e9,
+            float(row[" Dynamic read energy (nJ)"]) * 1e-9,
+            float(row[" Dynamic write energy (nJ)"]) * 1e-9,
+            float(row[" Dynamic write energy (nJ)"]) * 1e-9,
             float(row[" Standby leakage per bank(mW)"]) * 1e-3 * self.n_banks,
             float(row[" Area (mm2)"]) * 1e-6,
-            float(row[" Random cycle time (ns)"]) * 1e9,
+            float(row[" Random cycle time (ns)"]) * 1e-9,
         )
 
     @abstractmethod
