@@ -1,4 +1,3 @@
-# in your metric, please set the accuracy you think CACTI's estimations are
 from abc import abstractmethod
 from logging import Logger
 import math
@@ -36,7 +35,7 @@ def get_cacti_dir(logger: Logger) -> str:
 
 class DRAM(EnergyAreaModel):
     component_name = ["DRAM", "dram"]
-    percent_accuracy_0_to_100 = 80
+    priority = 0.8
     type2energy = {
         "LPDDR4": 8,  # Public data
         "LPDDR": 40,  # Malladi et al., ISCA'12
@@ -359,7 +358,7 @@ class Memory(EnergyAreaModel):
 
 class SRAM(Memory):
     component_name = ["SRAM", "sram"]
-    percent_accuracy_0_to_100 = 80
+    priority = 0.8
 
     def __init__(
         self,
@@ -394,7 +393,7 @@ class SRAM(Memory):
 
 class Cache(Memory):
     component_name = "cache"
-    percent_accuracy_0_to_100 = 80
+    priority = 0.8
 
     def __init__(
         self,
