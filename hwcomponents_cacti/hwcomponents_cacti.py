@@ -12,7 +12,7 @@ import csv
 import hashlib
 
 
-def clean_tmp_dir():
+def _clean_tmp_dir():
     temp_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "cacti_inputs_outputs"
     )
@@ -25,7 +25,7 @@ def clean_tmp_dir():
     return temp_dir
 
 
-def get_cacti_dir(logger: Logger) -> str:
+def _get_cacti_dir(logger: Logger) -> str:
     for to_try in ["cacti/cacti", "cacti"]:
         p = os.path.join(os.path.dirname(__file__), to_try)
         if os.path.exists(p) and os.path.isfile(p):
@@ -34,6 +34,26 @@ def get_cacti_dir(logger: Logger) -> str:
 
 
 class DRAM(EnergyAreaModel):
+    """
+
+    DRAM model using a simple joules-per-bit energy. Assumes that leak power and area
+    are both zero.
+
+    Args:
+        width: The width of the DRAM bus in bits.
+        type: The type of DRAM. Must be one of the following:
+            - LPDDR4
+            - LPDDR
+            - DDR3
+            - GDDR5
+            - HBM2
+            - HMC
+
+    Attributes:
+        width: The width of the DRAM bus in bits.
+        type: The type of DRAM.
+    """
+
     component_name = ["DRAM", "dram"]
     priority = 0.8
     type2energy = {
@@ -51,18 +71,36 @@ class DRAM(EnergyAreaModel):
             type in self.type2energy
         ), f"DRAM type {type} is not supported. Must be one of {list(self.type2energy.keys())}."
         self.type = type
-        self.width = assert_int(width, "width")
+        self.width = _assert_int(width, "width")
 
     @actionDynamicEnergy(bits_per_action="width")
     def read(self) -> float:
+        """
+        Returns the energy for one DRAM read in Joules.
+
+        Args:
+            bits_per_action: The number of bits to read.
+
+        Returns:
+            The energy for one DRAM read in Joules.
+        """
         return self.type2energy[self.type] * 1e-12 * self.width
 
     @actionDynamicEnergy(bits_per_action="width")
     def write(self) -> float:
+        """
+        Returns the energy for one DRAM write in Joules.
+
+        Args:
+            bits_per_action: The number of bits to write.
+
+        Returns:
+            The energy for one DRAM write in Joules.
+        """
         return self.read()
 
 
-def assert_int(val, name: str, greater_than: int = 0):
+def _assert_int(val, name: str, greater_than: int = 0):
     errstr = f"{name} must be an integer >{greater_than}. Got {val}."
     try:
         if isinstance(val, str):
@@ -71,19 +109,14 @@ def assert_int(val, name: str, greater_than: int = 0):
             assert int(val) == val
             val = int(val)
     except Exception as e:
+        val = None
+    if val is None:
         raise ValueError(errstr)
     assert val > greater_than, errstr
     return val
 
 
-def interp(interp_point, values0, values1):
-    return tuple(
-        (1 - interp_point) * values0[i] + interp_point * values1[i]
-        for i in range(len(values0))
-    )
-
-
-def interp_call(
+def _interp_call(
     logger: Logger,
     param_name: str,
     callfunc: Callable,
@@ -108,11 +141,15 @@ def interp_call(
     )
 
 
-class Memory(EnergyAreaModel):
+class _Memory(EnergyAreaModel):
+    """
+    Base class for all memory models.
+    """
+
     def __init__(
         self,
         cache_type: str,
-        tech_node: Union[str, int],  # Must be 22-180nm
+        tech_node: float,  # Must be 22-180nm
         width: int,  # Must be >=32 < CHANGES BY NUMBER OF BANKS !?!? >
         depth: int,  # Must be >=64 < CHANGES BY NUMBER OF BANKS !?!? >
         n_rw_ports: int = 1,  # Must be power of 2, >=1
@@ -121,13 +158,13 @@ class Memory(EnergyAreaModel):
         tag_size: Optional[int] = None,
     ):
         self.cache_type = cache_type
-        self.width = assert_int(width, "width")
-        self.depth = assert_int(depth, "depth")
-        self.n_rw_ports = assert_int(n_rw_ports, "n_rw_ports")
-        self.n_banks = assert_int(n_banks, "n_banks")
-        self.associativity = assert_int(associativity, "associativity")
+        self.width = _assert_int(width, "width")
+        self.depth = _assert_int(depth, "depth")
+        self.n_rw_ports = _assert_int(n_rw_ports, "n_rw_ports")
+        self.n_banks = _assert_int(n_banks, "n_banks")
+        self.associativity = _assert_int(associativity, "associativity")
         if self.associativity > 1:
-            self.tag_size = assert_int(tag_size, "tag_size")
+            self.tag_size = _assert_int(tag_size, "tag_size")
         else:
             self.tag_size = 0
 
@@ -238,7 +275,7 @@ class Memory(EnergyAreaModel):
             )
 
         else:
-            return interp_call(
+            return _interp_call(
                 self.logger,
                 "tech_node",
                 self._interp_size,
@@ -296,7 +333,7 @@ class Memory(EnergyAreaModel):
         cfg.append(f"-associativity {associativity}\n")
 
         # Generate a unique name for the input file using Python's hash function
-        temp_dir = clean_tmp_dir()
+        temp_dir = _clean_tmp_dir()
         input_name = hashlib.sha256("".join(cfg).encode()).hexdigest()
         input_path = os.path.join(temp_dir, input_name)
         output_path = os.path.join(temp_dir, input_name + "cacti.log")
@@ -330,7 +367,7 @@ class Memory(EnergyAreaModel):
         self.logger.info(f"Calling CACTI with input path {input_path}")
         self.logger.info(f"CACTI output will be written to {output_path}")
 
-        cacti_dir = get_cacti_dir(self.logger)
+        cacti_dir = _get_cacti_dir(self.logger)
 
         exec_list = ["./cacti", "-infile", input_path]
         self.logger.info(
@@ -351,18 +388,42 @@ class Memory(EnergyAreaModel):
 
         return read_csv_results(output_path_csv)
 
-    @abstractmethod
-    def do_nothing(self):
-        pass
 
+class SRAM(_Memory):
+    """
+    SRAM model using CACTI.
 
-class SRAM(Memory):
+    Parameters
+    ----------
+        tech_node: The technology node of the SRAM in meters.
+        width: The width of the read and write ports in bits. This is the number of bits
+            that are accssed by any one read/write. Total size = width * depth.
+        depth: The number of entries in the SRAM, each with `width` bits. Total size =
+            width * depth.
+        n_rw_ports: The number of read/write ports. Bandwidth will increase with more
+            ports.
+        n_banks: The number of banks. Bandwidth will increase with more banks.
+
+    Attributes
+    ----------
+        component_name: set to "sram"
+        priority: set to 0.8
+        tech_node: The technology node of the SRAM in meters.
+        width: The width of the read and write ports in bits. This is the number of bits
+            that are accssed by any one read/write. Total size = width * depth.
+        depth: The number of entries in the SRAM, each with `width` bits. Total size =
+            width * depth.
+        n_rw_ports: The number of read/write ports. Bandwidth will increase with more
+            ports.
+        n_banks: The number of banks. Bandwidth will increase with more banks.
+    """
+
     component_name = ["SRAM", "sram"]
     priority = 0.8
 
     def __init__(
         self,
-        tech_node: Union[str, int],
+        tech_node: float,
         width: int,
         depth: int,
         n_rw_ports: int = 1,
@@ -379,25 +440,92 @@ class SRAM(Memory):
 
     @actionDynamicEnergy(bits_per_action="width")
     def read(self) -> float:
+        """
+        Returns the energy for one SRAM read in Joules.
+
+        Parameters
+        ----------
+        bits_per_action : int
+            The number of bits to read.
+
+        Returns
+        -------
+            The energy for one SRAM read in Joules.
+        """
         self._interpolate_and_call_cacti()
         return self.read_energy
 
     @actionDynamicEnergy(bits_per_action="width")
     def write(self) -> float:
+        """
+        Returns the energy for one SRAM write in Joules.
+
+        Parameters
+        ----------
+        bits_per_action : int
+            The number of bits to write.
+
+        Returns
+        -------
+            The energy for one SRAM write in Joules.
+        """
         self._interpolate_and_call_cacti()
         return self.write_energy
 
-    def do_nothing(self):
-        pass
 
+class Cache(_Memory):
+    """
+    Cache model using CACTI.
 
-class Cache(Memory):
+    Parameters
+    ----------
+        tech_node: float
+            The technology node of the cache in meters.
+        width: int
+            The width of the read and write ports in bits. This is the number of bits
+            that are accssed by any one read/write. Total size = width * depth.
+        depth: int
+            The number of entries in the cache, each with `width` bits. Total size =
+            width * depth.
+        n_rw_ports: int
+            The number of read/write ports. Bandwidth will increase with more ports.
+        n_banks: int
+            The number of banks. Bandwidth will increase with more banks.
+        associativity: int
+            The associativity of the cache. This is the number of sets in the cache.
+            Bandwidth will increase with more associativity.
+        tag_size: int
+            The number of bits of the tag used to check for cache misses and hits.
+
+    Attributes
+    ----------
+        component_name: str
+            set to "cache"
+        priority: float
+            set to 0.8
+        tech_node: float
+            The technology node of the cache in meters.
+        width: int
+            The width of the read and write ports in bits. This is the number of bits
+            that are accssed by any one read/write. Total size = width * depth.
+        depth: The number of entries in the cache, each with `width` bits. Total size =
+            width * depth.
+        n_rw_ports: The number of read/write ports (each port supporting one read or
+            one write per cycle). Bandwidth will increase with more ports.
+        n_banks: The number of banks. Bandwidth will increase with more banks.
+        associativity: int
+            The associativity of the cache. This is the number of sets in the cache.
+            Bandwidth will increase with more associativity.
+        tag_size: int
+            The number of bits of the tag used to check for cache misses and hits.
+    """
+
     component_name = "cache"
     priority = 0.8
 
     def __init__(
         self,
-        tech_node: Union[str, int],
+        tech_node: float,
         width: int,
         depth: int,
         n_rw_ports: int = 1,
@@ -418,25 +546,34 @@ class Cache(Memory):
 
     @actionDynamicEnergy(bits_per_action="width")
     def read(self) -> float:
+        """
+        Returns the energy for one cache read in Joules.
+
+        Parameters
+        ----------
+        bits_per_action : int
+            The number of bits to read.
+
+        Returns
+        -------
+            The energy for one cache read in Joules.
+        """
         self._interpolate_and_call_cacti()
         return self.read_energy
 
     @actionDynamicEnergy(bits_per_action="width")
     def write(self) -> float:
+        """
+        Returns the energy for one cache write in Joules.
+
+        Parameters
+        ----------
+        bits_per_action : int
+            The number of bits to write.
+
+        Returns
+        -------
+            The energy for one cache write in Joules.
+        """
         self._interpolate_and_call_cacti()
         return self.write_energy
-
-    @actionDynamicEnergy(bits_per_action="width")
-    def read_access(self) -> float:
-        return self.read()
-
-    @actionDynamicEnergy(bits_per_action="width")
-    def write_access(self) -> float:
-        return self.write()
-
-    @actionDynamicEnergy(bits_per_action="width")
-    def update_access(self) -> float:
-        return self.update()
-
-    def do_nothing(self):
-        pass
