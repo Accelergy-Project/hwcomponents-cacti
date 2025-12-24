@@ -221,6 +221,7 @@ class HBM2(DRAM):
     def __init__(self, width: int):
         super().__init__(width, type="HBM2")
 
+
 class HMC(DRAM):
     """
     HMC DRAM model using a simple joules-per-bit energy. Assumes that leak power and
