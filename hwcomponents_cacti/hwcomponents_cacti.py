@@ -100,6 +100,151 @@ class DRAM(EnergyAreaModel):
         return self.read()
 
 
+class LPDDR4(DRAM):
+    """
+    LPDDR4 DRAM model using a simple joules-per-bit energy. Assumes that leak power and
+    area are both zero.
+
+    Parameters
+    ----------
+    width: int
+        The width of the DRAM bus in bits.
+
+    Attributes
+    ----------
+    width: int
+        The width of the DRAM bus in bits.
+    type: str
+        The type of DRAM.
+
+    """
+
+    component_name = ["LPDDR4", "lpddr4"]
+    priority = 0.8
+
+    def __init__(self, width: int):
+        super().__init__(width, type="LPDDR4")
+
+
+class LPDDR(DRAM):
+    """
+    LPDDR DRAM model using a simple joules-per-bit energy. Assumes that leak power and
+    area are both zero.
+
+    Parameters
+    ----------
+    width: int
+        The width of the DRAM bus in bits.
+
+    Attributes
+    ----------
+    width: int
+        The width of the DRAM bus in bits.
+    type: str
+        The type of DRAM.
+    """
+    component_name = ["LPDDR", "lpddr"]
+    priority = 0.8
+
+    def __init__(self, width: int):
+        super().__init__(width, type="LPDDR")
+
+
+class DDR3(DRAM):
+    """
+    DDR3 DRAM model using a simple joules-per-bit energy. Assumes that leak power and
+    area are both zero.
+
+    Parameters
+    ----------
+    width: int
+        The width of the DRAM bus in bits.
+
+    Attributes
+    ----------
+    width: int
+        The width of the DRAM bus in bits.
+    type: str
+        The type of DRAM.
+    """
+    component_name = ["DDR3", "ddr3"]
+    priority = 0.8
+
+    def __init__(self, width: int):
+        super().__init__(width, type="DDR3")
+
+
+class GDDR5(DRAM):
+    """
+    GDDR5 DRAM model using a simple joules-per-bit energy. Assumes that leak power and
+    area are both zero.
+
+    Parameters
+    ----------
+    width: int
+        The width of the DRAM bus in bits.
+
+    Attributes
+    ----------
+    width: int
+        The width of the DRAM bus in bits.
+    type: str
+        The type of DRAM.
+    """
+    component_name = ["GDDR5", "gddr5"]
+    priority = 0.8
+
+    def __init__(self, width: int):
+        super().__init__(width, type="GDDR5")
+
+
+class HBM2(DRAM):
+    """
+    HBM2 DRAM model using a simple joules-per-bit energy. Assumes that leak power and
+    area are both zero.
+
+    Parameters
+    ----------
+    width: int
+        The width of the DRAM bus in bits.
+
+    Attributes
+    ----------
+    width: int
+        The width of the DRAM bus in bits.
+    type: str
+        The type of DRAM.
+    """
+    component_name = ["HBM2", "hbm2"]
+    priority = 0.8
+
+    def __init__(self, width: int):
+        super().__init__(width, type="HBM2")
+
+class HMC(DRAM):
+    """
+    HMC DRAM model using a simple joules-per-bit energy. Assumes that leak power and
+    area are both zero.
+
+    Parameters
+    ----------
+    width: int
+        The width of the DRAM bus in bits.
+
+    Attributes
+    ----------
+    width: int
+        The width of the DRAM bus in bits.
+    type: str
+        The type of DRAM.
+    """
+    component_name = ["HMC", "hmc"]
+    priority = 0.8
+
+    def __init__(self, width: int):
+        super().__init__(width, type="HMC")
+
+
 def _assert_int(val, name: str, greater_than: int = 0):
     errstr = f"{name} must be an integer >{greater_than}. Got {val}."
     try:
