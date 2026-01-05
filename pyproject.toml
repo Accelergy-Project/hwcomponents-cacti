@@ -1,29 +1,30 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "hwcomponents_cacti"
-version = "0.1"
+dynamic = ["version"]
 description = "A package for estimating the energy and area of memories with CACTI"
 readme = "README.md"
 requires-python = ">=3.12"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "Tanner Andrulis", email = "andrulis@mit.edu"}
 ]
 keywords = ["accelerator", "hardware", "energy", "estimation", "CACTI"]
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
+dependencies = [
+    "hwcomponents",
 ]
 
 [tool.setuptools]
 packages = {find = {}}
 include-package-data = true
-py-modules = ["hwcomponents_cacti"]
 
 [tool.setuptools.package-data]
 hwcomponents_cacti = [
@@ -40,3 +41,9 @@ hwcomponents_cacti = [
     "cacti/tech_params/90nm-old.dat",
     "cacti/tech_params/90nm.dat",
 ]
+
+[tool.setuptools_scm]
+write_to = "hwcomponents_cacti/_version.py"
+fallback_version = "1.0.0"
+version_scheme = "setup_scm_version:post_version"
+local_scheme = "setup_scm_version:no_local"
