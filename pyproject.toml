@@ -29,17 +29,7 @@ include-package-data = true
 [tool.setuptools.package-data]
 hwcomponents_cacti = [
     "default_cfg.cfg",
-    "cacti/cacti",
-    "cacti/tech_params/16nm.dat",
-    "cacti/tech_params/180nm-old.dat",
-    "cacti/tech_params/180nm.dat",
-    "cacti/tech_params/22nm.dat",
-    "cacti/tech_params/32nm.dat",
-    "cacti/tech_params/45nm.dat",
-    "cacti/tech_params/65nm-old.dat",
-    "cacti/tech_params/65nm.dat",
-    "cacti/tech_params/90nm-old.dat",
-    "cacti/tech_params/90nm.dat",
+    "cacti/**/*",
 ]
 
 [tool.setuptools_scm]
