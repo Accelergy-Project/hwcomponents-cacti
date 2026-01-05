@@ -55,7 +55,7 @@ class DRAM(EnergyAreaModel):
     """
 
     component_name = ["DRAM", "dram"]
-    priority = 0.8
+    priority = 0.3
     type2energy = {
         "LPDDR4": 8,  # Public data
         "LPDDR": 40,  # Malladi et al., ISCA'12
@@ -120,7 +120,7 @@ class LPDDR4(DRAM):
     """
 
     component_name = ["LPDDR4", "lpddr4"]
-    priority = 0.8
+    priority = 0.3
 
     def __init__(self, width: int):
         super().__init__(width, type="LPDDR4")
@@ -144,7 +144,7 @@ class LPDDR(DRAM):
         The type of DRAM.
     """
     component_name = ["LPDDR", "lpddr"]
-    priority = 0.8
+    priority = 0.3
 
     def __init__(self, width: int):
         super().__init__(width, type="LPDDR")
@@ -168,7 +168,7 @@ class DDR3(DRAM):
         The type of DRAM.
     """
     component_name = ["DDR3", "ddr3"]
-    priority = 0.8
+    priority = 0.3
 
     def __init__(self, width: int):
         super().__init__(width, type="DDR3")
@@ -192,7 +192,7 @@ class GDDR5(DRAM):
         The type of DRAM.
     """
     component_name = ["GDDR5", "gddr5"]
-    priority = 0.8
+    priority = 0.3
 
     def __init__(self, width: int):
         super().__init__(width, type="GDDR5")
@@ -216,7 +216,7 @@ class HBM2(DRAM):
         The type of DRAM.
     """
     component_name = ["HBM2", "hbm2"]
-    priority = 0.8
+    priority = 0.3
 
     def __init__(self, width: int):
         super().__init__(width, type="HBM2")
@@ -240,7 +240,7 @@ class HMC(DRAM):
         The type of DRAM.
     """
     component_name = ["HMC", "hmc"]
-    priority = 0.8
+    priority = 0.3
 
     def __init__(self, width: int):
         super().__init__(width, type="HMC")
@@ -565,7 +565,7 @@ class SRAM(_Memory):
     """
 
     component_name = ["SRAM", "sram"]
-    priority = 0.8
+    priority = 0.3
 
     def __init__(
         self,
@@ -667,7 +667,7 @@ class Cache(_Memory):
     """
 
     component_name = "cache"
-    priority = 0.8
+    priority = 0.3
 
     def __init__(
         self,
