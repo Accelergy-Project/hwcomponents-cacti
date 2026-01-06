@@ -143,6 +143,7 @@ class LPDDR(DRAM):
     type: str
         The type of DRAM.
     """
+
     component_name = ["LPDDR", "lpddr"]
     priority = 0.3
 
@@ -167,6 +168,7 @@ class DDR3(DRAM):
     type: str
         The type of DRAM.
     """
+
     component_name = ["DDR3", "ddr3"]
     priority = 0.3
 
@@ -191,6 +193,7 @@ class GDDR5(DRAM):
     type: str
         The type of DRAM.
     """
+
     component_name = ["GDDR5", "gddr5"]
     priority = 0.3
 
@@ -215,6 +218,7 @@ class HBM2(DRAM):
     type: str
         The type of DRAM.
     """
+
     component_name = ["HBM2", "hbm2"]
     priority = 0.3
 
@@ -239,6 +243,7 @@ class HMC(DRAM):
     type: str
         The type of DRAM.
     """
+
     component_name = ["HMC", "hmc"]
     priority = 0.3
 
