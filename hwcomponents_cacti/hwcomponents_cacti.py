@@ -323,7 +323,6 @@ class _Memory(ComponentModel):
 
         self.read_energy: float = None
         self.write_energy: float = None
-        self.update_energy: float = None
         self.cacti_leak_power: float = None
         self.cacti_area: float = None
         self.cycle_period: float = None
@@ -351,7 +350,6 @@ class _Memory(ComponentModel):
         (
             read_energy,
             write_energy,
-            update_energy,
             leak_power,
             area,
             cycle_period,
@@ -371,14 +369,12 @@ class _Memory(ComponentModel):
         # Found these empirically by testing different inputs with CACTI
         read_energy *= (widthscale * 0.7 + 0.3) * (depthscale ** (1.56 / 2))
         write_energy *= (widthscale * 0.7 + 0.3) * (depthscale ** (1.56 / 2))
-        update_energy *= (widthscale * 0.7 + 0.3) * (depthscale ** (1.56 / 2))
         leak_power *= widthscale * depthscale
         area *= widthscale * depthscale
         cycle_period *= 1  # Dosn't scale strongly with anything
         return (
             read_energy,
             write_energy,
-            update_energy,
             leak_power,
             area,
             cycle_period,
@@ -389,31 +385,30 @@ class _Memory(ComponentModel):
         # Interpolate. Below 16, interpolate energy with square root scaling (IDRS 2022),
         # area with linear scaling.
         # https://fuse.wikichip.org/news/7343/iedm-2022-did-we-just-witness-the-death-of-sram/
-        if self.tech_node < min(supported_technologies):
+        if self.tech_node < min(supported_technologies) or self.tech_node > max(supported_technologies):
             scale = self.tech_node / min(supported_technologies)
             (
                 read_energy,
                 write_energy,
-                update_energy,
                 leak_power,
                 area,
                 cycle_period,
             ) = self._interp_size(min(supported_technologies))
             read_energy *= scale**0.5
             write_energy *= scale**0.5
-            update_energy *= scale**0.5
             area *= scale
+            cycle_period *= scale
             # B. Parvais et al., "The device architecture dilemma for CMOS
             # technologies: Opportunities & challenges of finFET over planar
             # MOSFET," 2009 International Symposium on VLSI tech_node, Systems,
             # and Applications, Hsinchu, Taiwan, 2009, pp. 80-81, doi:
             # 10.1109/VTSA.2009.5159300.
             # finfets have approx. 21% less leakage power
-            leak_power *= scale**0.5 * 0.79
+            if self.tech_node < min(supported_technologies):
+                leak_power *= scale**0.5 * 0.79
             return (
                 read_energy,
                 write_energy,
-                update_energy,
                 leak_power,
                 area,
                 cycle_period,
@@ -445,7 +440,6 @@ class _Memory(ComponentModel):
         (
             self.read_energy,
             self.write_energy,
-            self.update_energy,
             self.cacti_leak_power,
             self.cacti_area,
             self.cycle_period,
@@ -496,7 +490,6 @@ class _Memory(ComponentModel):
                 row = list(csv_results)[-1]
                 return (
                     float(row[" Dynamic read energy (nJ)"]) * 1e-9,
-                    float(row[" Dynamic write energy (nJ)"]) * 1e-9,
                     float(row[" Dynamic write energy (nJ)"]) * 1e-9,
                     float(row[" Standby leakage per bank(mW)"]) * 1e-3 * self.n_banks,
                     float(row[" Area (mm2)"]) * 1e-6,
@@ -604,7 +597,7 @@ class SRAM(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.read_energy, 0.0
+        return self.read_energy, self.cycle_period
 
     @action(bits_per_action="width")
     def write(self) -> tuple[float, float]:
@@ -621,7 +614,7 @@ class SRAM(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.write_energy, 0.0
+        return self.write_energy, self.cycle_period
 
 
 class Cache(_Memory):
@@ -710,7 +703,7 @@ class Cache(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.read_energy, 0.0
+        return self.read_energy, self.cycle_period
 
     @action(bits_per_action="width")
     def write(self) -> tuple[float, float]:
@@ -727,4 +720,4 @@ class Cache(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.write_energy, 0.0
+        return self.write_energy, self.cycle_period
