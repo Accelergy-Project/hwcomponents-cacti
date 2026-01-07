@@ -7,7 +7,7 @@ import os
 import subprocess
 import tempfile
 from typing import Callable, Optional, Union
-from hwcomponents import EnergyAreaModel, actionDynamicEnergy
+from hwcomponents import ComponentModel, action
 import csv
 import hashlib
 
@@ -33,7 +33,7 @@ def _get_cacti_dir(logger: Logger) -> str:
     raise FileNotFoundError("CACTI executable not found")
 
 
-class DRAM(EnergyAreaModel):
+class DRAM(ComponentModel):
     """
 
     DRAM model using a simple joules-per-bit energy. Assumes that leak power and area
@@ -73,29 +73,29 @@ class DRAM(EnergyAreaModel):
         self.type = type
         self.width = _assert_int(width, "width")
 
-    @actionDynamicEnergy(bits_per_action="width")
-    def read(self) -> float:
+    @action(bits_per_action="width")
+    def read(self) -> tuple[float, float]:
         """
-        Returns the energy for one DRAM read in Joules.
+        Returns the energy and latency for one DRAM read.
 
         Args:
             bits_per_action: The number of bits to read.
 
         Returns:
-            The energy for one DRAM read in Joules.
+            (energy, latency): Tuple in (Joules, seconds).
         """
-        return self.type2energy[self.type] * 1e-12 * self.width
+        return self.type2energy[self.type] * 1e-12 * self.width, 0.0
 
-    @actionDynamicEnergy(bits_per_action="width")
-    def write(self) -> float:
+    @action(bits_per_action="width")
+    def write(self) -> tuple[float, float]:
         """
-        Returns the energy for one DRAM write in Joules.
+        Returns the energy and latency for one DRAM write.
 
         Args:
             bits_per_action: The number of bits to write.
 
         Returns:
-            The energy for one DRAM write in Joules.
+            (energy, latency): Tuple in (Joules, seconds).
         """
         return self.read()
 
@@ -292,7 +292,7 @@ def _interp_call(
     )
 
 
-class _Memory(EnergyAreaModel):
+class _Memory(ComponentModel):
     """
     Base class for all memory models.
     """
@@ -589,10 +589,10 @@ class SRAM(_Memory):
             n_banks=n_banks,
         )
 
-    @actionDynamicEnergy(bits_per_action="width")
-    def read(self) -> float:
+    @action(bits_per_action="width")
+    def read(self) -> tuple[float, float]:
         """
-        Returns the energy for one SRAM read in Joules.
+        Returns the energy and latency for one SRAM read.
 
         Parameters
         ----------
@@ -601,15 +601,15 @@ class SRAM(_Memory):
 
         Returns
         -------
-            The energy for one SRAM read in Joules.
+            (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.read_energy
+        return self.read_energy, 0.0
 
-    @actionDynamicEnergy(bits_per_action="width")
-    def write(self) -> float:
+    @action(bits_per_action="width")
+    def write(self) -> tuple[float, float]:
         """
-        Returns the energy for one SRAM write in Joules.
+        Returns the energy and latency for one SRAM write.
 
         Parameters
         ----------
@@ -618,10 +618,10 @@ class SRAM(_Memory):
 
         Returns
         -------
-            The energy for one SRAM write in Joules.
+            (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.write_energy
+        return self.write_energy, 0.0
 
 
 class Cache(_Memory):
@@ -695,10 +695,10 @@ class Cache(_Memory):
             tag_size=tag_size,
         )
 
-    @actionDynamicEnergy(bits_per_action="width")
-    def read(self) -> float:
+    @action(bits_per_action="width")
+    def read(self) -> tuple[float, float]:
         """
-        Returns the energy for one cache read in Joules.
+        Returns the energy and latency for one cache read.
 
         Parameters
         ----------
@@ -707,15 +707,15 @@ class Cache(_Memory):
 
         Returns
         -------
-            The energy for one cache read in Joules.
+            (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.read_energy
+        return self.read_energy, 0.0
 
-    @actionDynamicEnergy(bits_per_action="width")
-    def write(self) -> float:
+    @action(bits_per_action="width")
+    def write(self) -> tuple[float, float]:
         """
-        Returns the energy for one cache write in Joules.
+        Returns the energy and latency for one cache write.
 
         Parameters
         ----------
@@ -724,7 +724,7 @@ class Cache(_Memory):
 
         Returns
         -------
-            The energy for one cache write in Joules.
+            (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.write_energy
+        return self.write_energy, 0.0

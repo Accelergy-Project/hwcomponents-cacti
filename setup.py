@@ -1,4 +1,5 @@
 """Setup.py to ensure hwcomponents._version_scheme is importable during build."""
+
 import sys
 import os
 from pathlib import Path
@@ -48,6 +49,6 @@ class CustomBuildCommand(build):
 
 setup(
     cmdclass={
-        'build': CustomBuildCommand,
+        "build": CustomBuildCommand,
     },
 )

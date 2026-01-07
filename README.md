@@ -24,14 +24,15 @@ hwc --list | grep Cache
 If you use this library in your work, please cite the following:
 
 ```bibtex
-@misc{andrulis2024modelinganalogdigitalconverterenergyarea,
-  title={Modeling Analog-Digital-Converter Energy and Area for Compute-In-Memory Accelerator Design},
-  author={Tanner Andrulis and Ruicong Chen and Hae-Seung Lee and Joel S. Emer and Vivienne Sze},
+@INPROCEEDINGS{cimloop,
+  author={Andrulis, Tanner and Emer, Joel S. and Sze, Vivienne},
+  booktitle={2024 IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS)},
+  title={CiMLoop: A Flexible, Accurate, and Fast Compute-In-Memory Modeling Tool},
   year={2024},
-  eprint={2404.06553},
-  archivePrefix={arXiv},
-  primaryClass={cs.AR},
-  url={https://arxiv.org/abs/2404.06553},
+  volume={},
+  number={},
+  pages={10-23},
+  doi={10.1109/ISPASS61541.2024.00012}
 }
 @inproceedings{accelergy,
   author      = {Wu, Yannan Nellie and Emer, Joel S and Sze, Vivienne},
