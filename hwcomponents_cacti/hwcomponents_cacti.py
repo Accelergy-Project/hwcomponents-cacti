@@ -71,7 +71,7 @@ class DRAM(ComponentModel):
             type in self.type2energy
         ), f"DRAM type {type} is not supported. Must be one of {list(self.type2energy.keys())}."
         self.type = type
-        self.width = _assert_int(width, "width")
+        self.width = self.assert_int("width", width)
 
     @action(bits_per_action="width")
     def read(self) -> tuple[float, float]:
@@ -251,22 +251,6 @@ class HMC(DRAM):
         super().__init__(width, type="HMC")
 
 
-def _assert_int(val, name: str, greater_than: int = 0):
-    errstr = f"{name} must be an integer >{greater_than}. Got {val}."
-    try:
-        if isinstance(val, str):
-            val = int(val)
-        else:
-            assert int(val) == val
-            val = int(val)
-    except Exception as e:
-        val = None
-    if val is None:
-        raise ValueError(errstr)
-    assert val > greater_than, errstr
-    return val
-
-
 def _interp_call(
     logger: Logger,
     param_name: str,
@@ -302,20 +286,32 @@ class _Memory(ComponentModel):
         cache_type: str,
         tech_node: float,  # Must be 22-180nm
         width: int,  # Must be >=32 < CHANGES BY NUMBER OF BANKS !?!? >
-        depth: int,  # Must be >=64 < CHANGES BY NUMBER OF BANKS !?!? >
+        depth: int | None = None,  # Must be >=64 < CHANGES BY NUMBER OF BANKS !?!? >
+        size: int | None = None,
         n_rw_ports: int = 1,  # Must be power of 2, >=1
         n_banks=1,  # Must be power of 2, >=1
         associativity: int = 1,  # Weird stuff with this one
         tag_size: Optional[int] = None,
     ):
+        depth = self.resolve_multiple_ways_to_calculate_value(
+            "depth",
+            ("depth", lambda depth: depth, {"depth": depth}),
+            (
+                "size / width",
+                lambda size, width: size / width,
+                {"size": size, "width": width},
+            ),
+        )
+
         self.cache_type = cache_type
-        self.width = _assert_int(width, "width")
-        self.depth = _assert_int(depth, "depth")
-        self.n_rw_ports = _assert_int(n_rw_ports, "n_rw_ports")
-        self.n_banks = _assert_int(n_banks, "n_banks")
-        self.associativity = _assert_int(associativity, "associativity")
+        self.width = self.assert_int("width", width)
+        self.depth = self.assert_int("depth", depth)
+        self.size = self.assert_int("size", self.depth * self.width)
+        self.n_rw_ports = self.assert_int("n_rw_ports", n_rw_ports)
+        self.n_banks = self.assert_int("n_banks", n_banks)
+        self.associativity = self.assert_int("associativity", associativity)
         if self.associativity > 1:
-            self.tag_size = _assert_int(tag_size, "tag_size")
+            self.tag_size = self.assert_int("tag_size", tag_size)
         else:
             self.tag_size = 0
 
@@ -362,9 +358,6 @@ class _Memory(ComponentModel):
             self.tag_size,
             self.associativity,
         )
-        # width: Area,dynamic,leakage energy scale linearly. Delay does not scale.
-        # depth: Area,leakage energy scale linearly. Delay, dynamic energy scale with 1.56/2
-        # n_banks: Area,leakage energy scale linearly. Delay, dynamic energy do not scale.
 
         # Found these empirically by testing different inputs with CACTI
         read_energy *= (widthscale * 0.7 + 0.3) * (depthscale ** (1.56 / 2))
@@ -385,7 +378,9 @@ class _Memory(ComponentModel):
         # Interpolate. Below 16, interpolate energy with square root scaling (IDRS 2022),
         # area with linear scaling.
         # https://fuse.wikichip.org/news/7343/iedm-2022-did-we-just-witness-the-death-of-sram/
-        if self.tech_node < min(supported_technologies) or self.tech_node > max(supported_technologies):
+        if self.tech_node < min(supported_technologies) or self.tech_node > max(
+            supported_technologies
+        ):
             scale = self.tech_node / min(supported_technologies)
             (
                 read_energy,
@@ -543,7 +538,9 @@ class SRAM(_Memory):
         width: The width of the read and write ports in bits. This is the number of bits
             that are accssed by any one read/write. Total size = width * depth.
         depth: The number of entries in the SRAM, each with `width` bits. Total size =
-            width * depth.
+            width * depth. Either this or depth must be provided, but not both.
+        size: The total size of the SRAM in bits. If provided, depth will be calculated
+            as size / width. Either this or depth must be provided, but not both.
         n_rw_ports: The number of read/write ports. Bandwidth will increase with more
             ports.
         n_banks: The number of banks. Bandwidth will increase with more banks.
@@ -557,6 +554,7 @@ class SRAM(_Memory):
             that are accssed by any one read/write. Total size = width * depth.
         depth: The number of entries in the SRAM, each with `width` bits. Total size =
             width * depth.
+        size: The total size of the SRAM in bits.
         n_rw_ports: The number of read/write ports. Bandwidth will increase with more
             ports.
         n_banks: The number of banks. Bandwidth will increase with more banks.
@@ -569,7 +567,8 @@ class SRAM(_Memory):
         self,
         tech_node: float,
         width: int,
-        depth: int,
+        depth: int | None = None,
+        size: int | None = None,
         n_rw_ports: int = 1,
         n_banks=1,
     ):
@@ -578,6 +577,7 @@ class SRAM(_Memory):
             tech_node=tech_node,
             width=width,
             depth=depth,
+            size=size,
             n_rw_ports=n_rw_ports,
             n_banks=n_banks,
         )
@@ -631,6 +631,8 @@ class Cache(_Memory):
         depth: int
             The number of entries in the cache, each with `width` bits. Total size =
             width * depth.
+        size: The total size of the cache in bits. If provided, depth will be calculated
+            as size / width. Either this or depth must be provided, but not both.
         n_rw_ports: int
             The number of read/write ports. Bandwidth will increase with more ports.
         n_banks: int
@@ -654,6 +656,7 @@ class Cache(_Memory):
             that are accssed by any one read/write. Total size = width * depth.
         depth: The number of entries in the cache, each with `width` bits. Total size =
             width * depth.
+        size: The total size of the cache in bits.
         n_rw_ports: The number of read/write ports (each port supporting one read or
             one write per cycle). Bandwidth will increase with more ports.
         n_banks: The number of banks. Bandwidth will increase with more banks.
@@ -671,7 +674,8 @@ class Cache(_Memory):
         self,
         tech_node: float,
         width: int,
-        depth: int,
+        depth: int | None = None,
+        size: int | None = None,
         n_rw_ports: int = 1,
         n_banks: int = 1,
         associativity: int = 1,
@@ -682,6 +686,7 @@ class Cache(_Memory):
             tech_node=tech_node,
             width=width,
             depth=depth,
+            size=size,
             n_rw_ports=n_rw_ports,
             n_banks=n_banks,
             associativity=associativity,
