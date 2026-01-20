@@ -1,16 +1,13 @@
-from abc import abstractmethod
 from logging import Logger
 import math
 import glob
 import csv
 import os
 import subprocess
-import tempfile
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 from hwcomponents import ComponentModel, action
 import csv
 import hashlib
-
 
 def _clean_tmp_dir():
     temp_dir = os.path.join(
@@ -325,7 +322,8 @@ class _Memory(ComponentModel):
         self._called_cacti = False
 
         self._interpolate_and_call_cacti()
-        super().__init__(self.cacti_area, self.cacti_leak_power)
+
+        super().__init__(leak_power=self.cacti_leak_power, area=self.cacti_area)
 
     def log_bandwidth(self):
         bw = self.width * self.n_rw_ports * self.n_banks
