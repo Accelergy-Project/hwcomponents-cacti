@@ -325,6 +325,9 @@ class _Memory(ComponentModel):
 
         super().__init__(leak_power=self.cacti_leak_power, area=self.cacti_area)
 
+    def _get_latency_per_bit(self):
+        return self.cycle_period / (self.width * self.n_rw_ports * self.n_banks)
+
     def log_bandwidth(self):
         bw = self.width * self.n_rw_ports * self.n_banks
         self.logger.info(f"Cache bandwidth: {bw/8} bytes/cycle")
@@ -595,7 +598,7 @@ class SRAM(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.read_energy, self.cycle_period
+        return self.read_energy, self._get_latency_per_bit()
 
     @action(bits_per_action="width")
     def write(self) -> tuple[float, float]:
@@ -612,7 +615,7 @@ class SRAM(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.write_energy, self.cycle_period
+        return self.write_energy, self._get_latency_per_bit()
 
 
 class Cache(_Memory):
@@ -706,7 +709,7 @@ class Cache(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.read_energy, self.cycle_period
+        return self.read_energy, self._get_latency_per_bit()
 
     @action(bits_per_action="width")
     def write(self) -> tuple[float, float]:
@@ -723,4 +726,4 @@ class Cache(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.write_energy, self.cycle_period
+        return self.write_energy, self._get_latency_per_bit()
