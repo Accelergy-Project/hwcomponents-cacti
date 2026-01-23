@@ -652,7 +652,7 @@ class SRAM(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.read_energy, self._get_latency_per_bit()
+        return self.read_energy, self._get_latency_per_bit() * self.width
 
     @action(bits_per_action="width")
     def write(self) -> tuple[float, float]:
@@ -669,7 +669,7 @@ class SRAM(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.write_energy, self._get_latency_per_bit()
+        return self.write_energy, self._get_latency_per_bit() * self.width
 
 
 class Cache(_Memory):
@@ -763,7 +763,7 @@ class Cache(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.read_energy, self._get_latency_per_bit()
+        return self.read_energy, self._get_latency_per_bit() * self.width
 
     @action(bits_per_action="width")
     def write(self) -> tuple[float, float]:
@@ -780,4 +780,4 @@ class Cache(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.write_energy, self._get_latency_per_bit()
+        return self.write_energy, self._get_latency_per_bit() * self.width
