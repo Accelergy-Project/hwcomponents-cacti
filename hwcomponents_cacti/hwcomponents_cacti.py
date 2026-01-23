@@ -9,6 +9,7 @@ from hwcomponents import ComponentModel, action
 import csv
 import hashlib
 
+
 def _clean_tmp_dir():
     temp_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "cacti_inputs_outputs"
