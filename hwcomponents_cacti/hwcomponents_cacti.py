@@ -30,7 +30,7 @@ def _get_cacti_dir(logger: Logger) -> str:
     raise FileNotFoundError("CACTI executable not found")
 
 
-class DRAM(ComponentModel):
+class _DRAM(ComponentModel):
     """
 
     DRAM model using a simple joules-per-bit energy. Assumes that leak power and area
@@ -38,37 +38,80 @@ class DRAM(ComponentModel):
 
     Args:
         width: The width of the DRAM bus in bits.
-        type: The type of DRAM. Must be one of the following:
-            - LPDDR4
-            - LPDDR
-            - DDR3
-            - GDDR5
-            - HBM2
-            - HMC
+        type: The type of DRAM.
 
     Attributes:
         width: The width of the DRAM bus in bits.
         type: The type of DRAM.
     """
 
-    component_name = ["DRAM", "dram"]
     priority = 0.3
-    type2energy = {
-        "LPDDR4": 8,  # Public data
-        "LPDDR": 40,  # Malladi et al., ISCA'12
-        "DDR3": 70,  # Chatterjee et al., MICRO'17
-        "GDDR5": 14,
-        "HBM2": 3.9,
-        "HMC": 4.2,  # https://dl.acm.org/doi/10.1145/3093336.3037702
+    type2energylatency = {
+        # "LPDDR5": (None, 100*1024*1024), # , https://en.wikipedia.org/wiki/LPDDR
+        # Public data
+        # https://en.wikipedia.org/wiki/LPDDR
+        "LPDDR4": (8, 50 * 1024 * 1024),
+        # Malladi et al. ISCA'12
+        # https://en.wikipedia.org/wiki/LPDDR
+        "LPDDR": (40, 6.25 * 1024 * 1024),
+        # Chatterjee et al. MICRO'17
+        # https://en.wikipedia.org/wiki/DDR3_SDRAM
+        "DDR3": (70, 33.3 * 1024 * 1024),
+        # https://www.lovechip.com/blog/hbm-high-bandwidth-memory-concept-architecture-and-application
+        # https://en.wikipedia.org/wiki/High_Bandwidth_Memory
+        "HBM": (1.0 * 1024 * 1024 * 1024),
+        # https://eureka.patsnap.com/insight/the-hbm-wars-sk-hynixs-dominance-samsungs-roadmap-and-the-looming-threat-of-cyclicality
+        # https://en.wikipedia.org/wiki/High_Bandwidth_Memory
+        "HBM2": (6.25, 2.4 * 1024 * 1024 * 1024),
+        # https://eureka.patsnap.com/insight/the-hbm-wars-sk-hynixs-dominance-samsungs-roadmap-and-the-looming-threat-of-cyclicality
+        # https://en.wikipedia.org/wiki/High_Bandwidth_Memory
+        "HBM3": (4.05, 6.4 * 8 * 1024 * 1024 * 1024),
+        # https://eureka.patsnap.com/report-hbm4-bandwidth-density-and-efficiency-metrics-in-multi-die-packages
+        # https://en.wikipedia.org/wiki/High_Bandwidth_Memory
+        # 20% reduction from HBM3
+        "HBM4": (3.2, 8 * 8 * 1024 * 1024 * 1024),
     }
 
-    def __init__(self, width: int, type: str = "LPDDR4"):
+    def __init__(
+        self,
+        width: int,
+        type: str = None,
+    ):
         super().__init__(area=0, leak_power=0)
-        assert (
-            type in self.type2energy
-        ), f"DRAM type {type} is not supported. Must be one of {list(self.type2energy.keys())}."
+        if type is None:
+            raise ValueError(
+                "DRAM type is required. Must be one of "
+                + ", ".join(self.type2energylatency.keys())
+                + "."
+            )
+        if type not in self.type2energylatency:
+            raise ValueError(
+                "DRAM type "
+                + type
+                + " is not supported. Must be one of "
+                + ", ".join(self.type2energylatency.keys())
+                + "."
+            )
+
         self.type = type
+        self.energy, self.throughput = self.type2energylatency[type]
         self.width = self.assert_int("width", width)
+        self.latency = 1 / self.throughput / self.width
+
+        if type in ["LPDDR4", "LPDDR", "DDR3"]:
+            assert (
+                width <= 64
+            ), f"Width is too large for {type}. Must be less than or equal to 64."
+
+        if type in ["HBM2", "HBM3"]:
+            assert (
+                width >= 1024
+            ), f"Width is too small for {type}. Must be greater than or equal to 1024."
+
+        if type in ["HBM4"]:
+            assert (
+                width >= 2048
+            ), f"Width is too small for {type}. Must be greater than or equal to 2048."
 
     @action(bits_per_action="width")
     def read(self) -> tuple[float, float]:
@@ -81,7 +124,7 @@ class DRAM(ComponentModel):
         Returns:
             (energy, latency): Tuple in (Joules, seconds).
         """
-        return self.type2energy[self.type] * 1e-12 * self.width, 0.0
+        return self.energy * 1e-12 * self.width, self.latency
 
     @action(bits_per_action="width")
     def write(self) -> tuple[float, float]:
@@ -97,7 +140,7 @@ class DRAM(ComponentModel):
         return self.read()
 
 
-class LPDDR4(DRAM):
+class LPDDR4(_DRAM):
     """
     LPDDR4 DRAM model using a simple joules-per-bit energy. Assumes that leak power and
     area are both zero.
@@ -113,17 +156,15 @@ class LPDDR4(DRAM):
         The width of the DRAM bus in bits.
     type: str
         The type of DRAM.
-
     """
 
-    component_name = ["LPDDR4", "lpddr4"]
-    priority = 0.3
+    component_name = ["DRAMLPDDR4", "DRAM_LPDDR4", "LPDDR4"]
 
-    def __init__(self, width: int):
-        super().__init__(width, type="LPDDR4")
+    def __init__(self, width: int = 64):
+        super().__init__(width=width, type="LPDDR4")
 
 
-class LPDDR(DRAM):
+class LPDDR(_DRAM):
     """
     LPDDR DRAM model using a simple joules-per-bit energy. Assumes that leak power and
     area are both zero.
@@ -141,14 +182,13 @@ class LPDDR(DRAM):
         The type of DRAM.
     """
 
-    component_name = ["LPDDR", "lpddr"]
-    priority = 0.3
+    component_name = ["DRAMLPDDR", "DRAM_LPDDR", "LPDDR"]
 
-    def __init__(self, width: int):
-        super().__init__(width, type="LPDDR")
+    def __init__(self, width: int = 64):
+        super().__init__(width=width, type="LPDDR")
 
 
-class DDR3(DRAM):
+class DDR3(_DRAM):
     """
     DDR3 DRAM model using a simple joules-per-bit energy. Assumes that leak power and
     area are both zero.
@@ -166,39 +206,13 @@ class DDR3(DRAM):
         The type of DRAM.
     """
 
-    component_name = ["DDR3", "ddr3"]
-    priority = 0.3
+    component_name = ["DRAMDDR3", "DRAM_DDR3", "DDR3"]
 
-    def __init__(self, width: int):
-        super().__init__(width, type="DDR3")
-
-
-class GDDR5(DRAM):
-    """
-    GDDR5 DRAM model using a simple joules-per-bit energy. Assumes that leak power and
-    area are both zero.
-
-    Parameters
-    ----------
-    width: int
-        The width of the DRAM bus in bits.
-
-    Attributes
-    ----------
-    width: int
-        The width of the DRAM bus in bits.
-    type: str
-        The type of DRAM.
-    """
-
-    component_name = ["GDDR5", "gddr5"]
-    priority = 0.3
-
-    def __init__(self, width: int):
-        super().__init__(width, type="GDDR5")
+    def __init__(self, width: int = 64):
+        super().__init__(width=width, type="DDR3")
 
 
-class HBM2(DRAM):
+class HBM2(_DRAM):
     """
     HBM2 DRAM model using a simple joules-per-bit energy. Assumes that leak power and
     area are both zero.
@@ -211,41 +225,52 @@ class HBM2(DRAM):
     Attributes
     ----------
     width: int
-        The width of the DRAM bus in bits.
+        The width of the DRAM bus in bits. Default of 2048 assumes 2 stacks of 1024 pins
+        each.
     type: str
         The type of DRAM.
     """
 
-    component_name = ["HBM2", "hbm2"]
-    priority = 0.3
+    component_name = ["DRAMHBM2", "DRAM_HBM2", "HBM2"]
 
-    def __init__(self, width: int):
-        super().__init__(width, type="HBM2")
+    def __init__(self, width: int = 2048):
+        super().__init__(width=width, type="HBM2")
 
 
-class HMC(DRAM):
+class HBM3(_DRAM):
     """
-    HMC DRAM model using a simple joules-per-bit energy. Assumes that leak power and
+    HBM3 DRAM model using a simple joules-per-bit energy. Assumes that leak power and
     area are both zero.
 
     Parameters
     ----------
     width: int
-        The width of the DRAM bus in bits.
-
-    Attributes
-    ----------
-    width: int
-        The width of the DRAM bus in bits.
-    type: str
-        The type of DRAM.
+        The width of the DRAM bus in bits. Default of 2048 assumes 2 stacks of 1024 pins
+        each.
     """
 
-    component_name = ["HMC", "hmc"]
-    priority = 0.3
+    component_name = ["DRAMHBM3", "DRAM_HBM3", "HBM3"]
 
-    def __init__(self, width: int):
-        super().__init__(width, type="HMC")
+    def __init__(self, width: int = 2048):
+        super().__init__(width=width, type="HBM3")
+
+
+class HBM4(_DRAM):
+    """
+    HBM4 DRAM model using a simple joules-per-bit energy. Assumes that leak power and
+    area are both zero.
+
+    Parameters
+    ----------
+    width: int
+        The width of the DRAM bus in bits. Default of 4096 assumes 2 stacks of 2048 pins
+        each.
+    """
+
+    component_name = ["DRAMHBM4", "DRAM_HBM4", "HBM4"]
+
+    def __init__(self, width: int = 4096):
+        super().__init__(width=width, type="HBM4")
 
 
 def _interp_call(
@@ -282,7 +307,7 @@ class _Memory(ComponentModel):
         self,
         cache_type: str,
         tech_node: float,  # Must be 22-180nm
-        width: int,  # Must be >=32 < CHANGES BY NUMBER OF BANKS !?!? >
+        width: int | None = None,  # Must be >=32 < CHANGES BY NUMBER OF BANKS !?!? >
         depth: int | None = None,  # Must be >=64 < CHANGES BY NUMBER OF BANKS !?!? >
         size: int | None = None,
         n_rw_ports: int = 1,  # Must be power of 2, >=1
@@ -290,6 +315,17 @@ class _Memory(ComponentModel):
         associativity: int = 1,  # Weird stuff with this one
         tag_size: Optional[int] = None,
     ):
+        if width is None:
+            if size is None:
+                raise ValueError("Either width or size must be provided.")
+            if depth is None:
+                width = max(16, math.ceil(math.sqrt(size)))
+                self.logger.info(f"Calculated width: {width} from sqrt({size=})")
+            else:
+                width = size / depth
+                self.logger.info(f"Calculated width: {width} from {size=} / {depth=}")
+
+        # Size and width are now known
         depth = self.resolve_multiple_ways_to_calculate_value(
             "depth",
             ("depth", lambda depth: depth, {"depth": depth}),
@@ -300,10 +336,16 @@ class _Memory(ComponentModel):
             ),
         )
 
+        assert math.isclose(
+            size, depth * width, rel_tol=1e-6
+        ), f"Size {size} != depth {depth} * width {width}"
+
+        self.logger.info(f"Calculated depth: {depth}")
+
         self.cache_type = cache_type
-        self.width = self.assert_int("width", width)
-        self.depth = self.assert_int("depth", depth)
-        self.size = self.assert_int("size", self.depth * self.width)
+        self.width = width  # self.assert_int("width", width)
+        self.depth = depth  # self.assert_int("depth", depth)
+        self.size = depth * width  # self.assert_int("size", self.depth * self.width)
         self.n_rw_ports = self.assert_int("n_rw_ports", n_rw_ports)
         self.n_banks = self.assert_int("n_banks", n_banks)
         self.associativity = self.assert_int("associativity", associativity)
@@ -440,6 +482,17 @@ class _Memory(ComponentModel):
             self.cacti_area,
             self.cycle_period,
         ) = self._interp_tech_node()
+
+        self.logger.info(
+            f"CACTI returned read energy {self.read_energy} for {self.width} bits"
+        )
+        self.logger.info(
+            f"CACTI returned write energy {self.write_energy} for {self.width} bits"
+        )
+        self.logger.info(f"CACTI returned leak power {self.cacti_leak_power}")
+        self.logger.info(f"CACTI returned area {self.cacti_area}")
+        self.logger.info(f"CACTI returned cycle period {self.cycle_period}")
+
         self.log_bandwidth()
 
     def _call_cacti(
@@ -567,7 +620,7 @@ class SRAM(_Memory):
     def __init__(
         self,
         tech_node: float,
-        width: int,
+        width: int | None = None,
         depth: int | None = None,
         size: int | None = None,
         n_rw_ports: int = 1,
@@ -674,7 +727,7 @@ class Cache(_Memory):
     def __init__(
         self,
         tech_node: float,
-        width: int,
+        width: int | None = None,
         depth: int | None = None,
         size: int | None = None,
         n_rw_ports: int = 1,
