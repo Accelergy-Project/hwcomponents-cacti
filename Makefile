@@ -6,6 +6,8 @@ build:
 		mv cacti.mk.tmp cacti.mk && \
 		sed 's/"\."VER_/"." VER_/g' io.cc > io.cc.tmp && \
 		mv io.cc.tmp io.cc && \
+		sed 's/\*dt = &(g_tp\.peri_global)/*dt/' nuca.cc > nuca.cc.tmp && \
+		mv nuca.cc.tmp nuca.cc && \
 		make clean && make
 	chmod -R 775 hwcomponents_cacti/cacti || true
 	test -x hwcomponents_cacti/cacti/cacti
