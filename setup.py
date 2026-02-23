@@ -30,6 +30,17 @@ try:
             super().finalize_options()
             self.root_is_pure = False
 
+        def run(self):
+            # Temporarily pretend we have ext_modules so that install_lib places
+            # files in platlib (the wheel root with Root-Is-Purelib: false) rather
+            # than in {dist_info}.data/purelib/ which auditwheel rejects.
+            orig = self.distribution.has_ext_modules
+            self.distribution.has_ext_modules = lambda: True
+            try:
+                super().run()
+            finally:
+                self.distribution.has_ext_modules = orig
+
         def get_tag(self):
             _, _, plat = super().get_tag()
             return "py3", "none", plat
