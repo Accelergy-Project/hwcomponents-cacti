@@ -2,7 +2,8 @@
 
 build:
 	cd hwcomponents_cacti/cacti && \
-		sed -i 's/-m64//g;s/-gstabs+//g' cacti.mk && \
+		sed 's/-m64//g;s/-gstabs+//g' cacti.mk > cacti.mk.tmp && \
+		mv cacti.mk.tmp cacti.mk && \
 		make clean && make
 	chmod -R 775 hwcomponents_cacti/cacti || true
 	test -x hwcomponents_cacti/cacti/cacti
