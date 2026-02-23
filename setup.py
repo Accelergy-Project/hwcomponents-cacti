@@ -20,6 +20,23 @@ from setuptools.command.build import build
 import shutil
 import subprocess
 
+try:
+    from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+
+    class bdist_wheel(_bdist_wheel):
+        """Mark wheel as platform-specific since it bundles a compiled C++ binary."""
+
+        def finalize_options(self):
+            super().finalize_options()
+            self.root_is_pure = False
+
+        def get_tag(self):
+            _, _, plat = super().get_tag()
+            return "py3", "none", plat
+
+except ImportError:
+    bdist_wheel = None
+
 # Remove build directory
 THIS_SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 if os.path.exists(os.path.join(THIS_SCRIPT_DIR, "build")):
@@ -50,5 +67,6 @@ class CustomBuildCommand(build):
 setup(
     cmdclass={
         "build": CustomBuildCommand,
+        **({"bdist_wheel": bdist_wheel} if bdist_wheel is not None else {}),
     },
 )
