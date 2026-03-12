@@ -97,7 +97,7 @@ class _DRAM(ComponentModel):
         self.type = type
         self.energy, self.throughput = self.type2energylatency[type]
         self.width = self.assert_int("width", width)
-        self.latency = 1 / self.throughput / self.width
+        self.latency = 1 / self.throughput
 
         if type in ["LPDDR4", "LPDDR", "DDR3"]:
             assert (
