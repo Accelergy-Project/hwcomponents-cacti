@@ -6,7 +6,7 @@ import os
 import fcntl
 import subprocess
 from typing import Callable, Optional
-from hwcomponents import ComponentModel, action
+from hwcomponents import ComponentModel, action, ActionCost
 import csv
 import hashlib
 
@@ -122,7 +122,7 @@ class _DRAM(ComponentModel):
             ), f"Width is too small for {type}. Must be greater than or equal to 2048."
 
     @action(bits_per_action="width")
-    def read(self) -> tuple[float, float]:
+    def read(self) -> ActionCost:
         """
         Returns the energy and latency for one DRAM read.
 
@@ -132,10 +132,14 @@ class _DRAM(ComponentModel):
         Returns:
             (energy, latency): Tuple in (Joules, seconds).
         """
-        return self.energy * 1e-12 * self.width, self.latency
+        return ActionCost(
+            energy=self.energy * 1e-12 * self.width,
+            throughput=1 / self.latency,
+            latency=self.latency,
+        )
 
     @action(bits_per_action="width")
-    def write(self) -> tuple[float, float]:
+    def write(self) -> ActionCost:
         """
         Returns the energy and latency for one DRAM write.
 
@@ -369,14 +373,18 @@ class _Memory(ComponentModel):
         self.cacti_leak_power: float = None
         self.cacti_area: float = None
         self.cycle_period: float = None
+        self.access_time: float = None
         self._called_cacti = False
 
         self._interpolate_and_call_cacti()
 
         super().__init__(leak_power=self.cacti_leak_power, area=self.cacti_area)
 
-    def _get_latency_per_bit(self):
+    def _get_cycle_period_per_bit(self):
         return self.cycle_period / (self.width * self.n_rw_ports * self.n_banks)
+
+    def _get_access_time(self):
+        return self.access_time
 
     def log_bandwidth(self):
         bw = self.width * self.n_rw_ports * self.n_banks
@@ -400,6 +408,7 @@ class _Memory(ComponentModel):
             leak_power,
             area,
             cycle_period,
+            access_time,
         ) = self._call_cacti(
             scaled_width * scaled_depth // 8,
             self.n_rw_ports,
@@ -415,13 +424,15 @@ class _Memory(ComponentModel):
         write_energy *= (widthscale * 0.7 + 0.3) * (depthscale ** (1.56 / 2))
         leak_power *= widthscale * depthscale
         area *= widthscale * depthscale
-        cycle_period *= 1  # Dosn't scale strongly with anything
+        cycle_period *= 1  # Doesn't scale strongly with anything
+        access_time *= 1
         return (
             read_energy,
             write_energy,
             leak_power,
             area,
             cycle_period,
+            access_time,
         )
 
     def _interp_tech_node(self):
@@ -439,11 +450,13 @@ class _Memory(ComponentModel):
                 leak_power,
                 area,
                 cycle_period,
+                access_time,
             ) = self._interp_size(min(supported_technologies))
             read_energy *= scale**0.5
             write_energy *= scale**0.5
             area *= scale
             cycle_period *= scale
+            access_time *= scale
             # B. Parvais et al., "The device architecture dilemma for CMOS
             # technologies: Opportunities & challenges of finFET over planar
             # MOSFET," 2009 International Symposium on VLSI tech_node, Systems,
@@ -458,6 +471,7 @@ class _Memory(ComponentModel):
                 leak_power,
                 area,
                 cycle_period,
+                access_time,
             )
         # Beyond 180nm, squared scaling
         if self.tech_node > max(supported_technologies):
@@ -489,6 +503,7 @@ class _Memory(ComponentModel):
             self.cacti_leak_power,
             self.cacti_area,
             self.cycle_period,
+            self.access_time,
         ) = self._interp_tech_node()
 
         self.logger.info(
@@ -500,6 +515,7 @@ class _Memory(ComponentModel):
         self.logger.info(f"CACTI returned leak power {self.cacti_leak_power}")
         self.logger.info(f"CACTI returned area {self.cacti_area}")
         self.logger.info(f"CACTI returned cycle period {self.cycle_period}")
+        self.logger.info(f"CACTI returned access time {self.access_time}")
 
         self.log_bandwidth()
 
@@ -552,6 +568,7 @@ class _Memory(ComponentModel):
                     float(row[" Standby leakage per bank(mW)"]) * 1e-3 * self.n_banks,
                     float(row[" Area (mm2)"]) * 1e-6,
                     float(row[" Random cycle time (ns)"]) * 1e-9,
+                    float(row[" Access time (ns)"]) * 1e-9,
                 )
 
         with open(lock_path, "w") as lock_file:
@@ -659,7 +676,7 @@ class SRAM(_Memory):
         )
 
     @action(bits_per_action="width")
-    def read(self) -> tuple[float, float]:
+    def read(self) -> ActionCost:
         """
         Returns the energy and latency for one SRAM read.
 
@@ -673,10 +690,14 @@ class SRAM(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.read_energy, self._get_latency_per_bit() * self.width
+        return ActionCost(
+            energy=self.read_energy,
+            throughput=1 / (self._get_cycle_period_per_bit() * self.width),
+            latency=self._get_access_time(),
+        )
 
     @action(bits_per_action="width")
-    def write(self) -> tuple[float, float]:
+    def write(self) -> ActionCost:
         """
         Returns the energy and latency for one SRAM write.
 
@@ -690,7 +711,11 @@ class SRAM(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.write_energy, self._get_latency_per_bit() * self.width
+        return ActionCost(
+            energy=self.write_energy,
+            throughput=1 / (self._get_cycle_period_per_bit() * self.width),
+            latency=self._get_access_time(),
+        )
 
 
 class Cache(_Memory):
@@ -770,7 +795,7 @@ class Cache(_Memory):
         )
 
     @action(bits_per_action="width")
-    def read(self) -> tuple[float, float]:
+    def read(self) -> ActionCost:
         """
         Returns the energy and latency for one cache read.
 
@@ -784,10 +809,14 @@ class Cache(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.read_energy, self._get_latency_per_bit() * self.width
+        return ActionCost(
+            energy=self.read_energy,
+            throughput=1 / (self._get_cycle_period_per_bit() * self.width),
+            latency=self._get_access_time(),
+        )
 
     @action(bits_per_action="width")
-    def write(self) -> tuple[float, float]:
+    def write(self) -> ActionCost:
         """
         Returns the energy and latency for one cache write.
 
@@ -801,4 +830,8 @@ class Cache(_Memory):
             (energy, latency): Tuple in (Joules, seconds).
         """
         self._interpolate_and_call_cacti()
-        return self.write_energy, self._get_latency_per_bit() * self.width
+        return ActionCost(
+            energy=self.write_energy,
+            throughput=1 / (self._get_cycle_period_per_bit() * self.width),
+            latency=self._get_access_time(),
+        )
